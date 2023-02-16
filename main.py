@@ -11,59 +11,8 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 
 from data_processor import DataProcessor
 from data_reader import DataReader
+# from data_reader import SimDataReader as DataReader
 from ui import MainWindow
-
-
-def logger_init():
-    logconfig = {
-        'version': 1,
-        'handlers': {
-            'console': {
-                'class': 'logging.StreamHandler',
-                'formatter': 'default',
-                'level': 'DEBUG'
-            },
-            'data_reader': {
-                'class': 'logging.handlers.RotatingFileHandler',
-                'formatter': 'default',
-                'level': 'DEBUG',
-                'maxBytes': 10 * 1024,
-                'backupCount': 3,
-                'filename': 'logs/data_reader.log',
-                'mode': 'a'
-
-            },
-            'main_win': {
-                'class': 'logging.handlers.RotatingFileHandler',
-                'formatter': 'default',
-                'level': 'DEBUG',
-                'maxBytes': 10 * 1024,
-                'backupCount': 3,
-                'filename': 'logs/main.log',
-                'mode': 'a'
-
-            }
-        },
-        'formatters': {
-            'default': {
-                'format': '%(asctime)s %(levelname)-8s %(name)-12s - %(message)s',
-                'datefmt': '%Y-%m-%d %H:%M:%S'
-            }
-        },
-        'loggers': {
-            'main_win': {
-                'handlers': ['console', 'main_win'],
-                'level': 'DEBUG'
-            },
-            'data_reader': {
-                'handlers': ['console', 'data_reader'],
-                'level': 'DEBUG'
-            }
-        }
-    }
-    if not os.path.exists('logs'):
-        os.mkdir('logs')
-    logging.config.dictConfig(logconfig)
 
 
 class DataManager(QObject):
@@ -90,7 +39,7 @@ class DataManager(QObject):
                 time.sleep(sleep_timeout)
 
     def update(self):
-        dfs = []
+        self.data_processor.begin_circle()
         for i, data_reader in enumerate(self.data_readers):
             try:
                 data = data_reader.read()
@@ -98,9 +47,11 @@ class DataManager(QObject):
                 data = None
             if data:
                 self.data_processor.add_data(i, data)
-            df = self.data_processor.get_data(i)
-            dfs.append(df)
-        self.data_changed.emit(dfs)
+        self.data_processor.end_circle()
+        # for i, data_reader in enumerate(self.data_readers):
+        #     df = self.data_processor.get_data(i)
+        #     dfs.append(df)
+        self.data_changed.emit(self.data_processor.dfs)
 
 
 def main():
@@ -140,6 +91,56 @@ def check_config():
         with open('config.ini', 'w') as f:
             config.write(f)
     return config.read('config.ini')
+
+
+def logger_init():
+    logconfig = {
+        'version': 1,
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'default',
+                'level': 'DEBUG'
+            },
+            'data_reader': {
+                'class': 'logging.handlers.RotatingFileHandler',
+                'formatter': 'default',
+                'level': 'DEBUG',
+                'maxBytes': 10 * 1024,
+                'backupCount': 3,
+                'filename': 'logs/data_reader.log',
+                'mode': 'a'
+            },
+            'main_win': {
+                'class': 'logging.handlers.RotatingFileHandler',
+                'formatter': 'default',
+                'level': 'DEBUG',
+                'maxBytes': 10 * 1024,
+                'backupCount': 3,
+                'filename': 'logs/main.log',
+                'mode': 'a'
+            }
+        },
+        'formatters': {
+            'default': {
+                'format': '%(asctime)s %(levelname)-8s %(name)-12s - %(message)s',
+                'datefmt': '%Y-%m-%d %H:%M:%S'
+            }
+        },
+        'loggers': {
+            'main_win': {
+                'handlers': ['console', 'main_win'],
+                'level': 'DEBUG'
+            },
+            'data_reader': {
+                'handlers': ['console', 'data_reader'],
+                'level': 'DEBUG'
+            }
+        }
+    }
+    if not os.path.exists('logs'):
+        os.mkdir('logs')
+    logging.config.dictConfig(logconfig)
 
 
 if __name__ == '__main__':

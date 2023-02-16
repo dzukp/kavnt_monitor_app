@@ -8,6 +8,7 @@ class DataProcessor:
     def __init__(self, count):
         self.columns = ['dtime', 'temperature', 'voltage', 'current']
         self.dfs = [pd.DataFrame(data=[], columns=self.columns) for i in range(count)]
+        self.temperature = None
 
     def add_data(self, idx, data):
         df = self.dfs[idx]
@@ -15,7 +16,9 @@ class DataProcessor:
         values[0] = datetime.now()
         df_data = pd.DataFrame(data=[values], columns=self.columns)
         df_data = self.calc_extra_data(df_data)
-        df = pd.concat([df, df_data])
+        if self.temperature is None and not df_data.empty and df_data['temperature'].values[0] is not None:
+            self.temperature = df_data['temperature'].values[0]
+        df = pd.concat([df, df_data], ignore_index=True)
         self.dfs[idx] = df
 
     def calc_extra_data(self, df):
@@ -26,7 +29,7 @@ class DataProcessor:
                 return 0
             return round(66.67 * (data - 11.5))
 
-        df['temperature'] = df.apply(lambda x: x['temperature'] if x['temperature'] != -50 else None, axis=1)
+        df['temperature'] = df.apply(lambda x: x['temperature'] if x['temperature'] > -50 else None, axis=1)
         df['ideal_temp'] = 25.0
         df['max_charging_voltage'] = df['temperature'].apply(
             lambda x: 15.4 - 0.03 * (x if (x is not None) and (x > -40) else 0))
@@ -37,3 +40,12 @@ class DataProcessor:
         start_time = datetime.now() - timedelta(hours=12)
         df = self.dfs[idx]
         return df[df['dtime'] > start_time]
+
+    def begin_circle(self):
+        self.temperature = None
+
+    def end_circle(self):
+        if self.temperature is not None:
+            for df in self.dfs:
+                if df.loc[df.index[-1], 'temperature'] is None:
+                    df.loc[df.index[-1], 'temperature'] = self.temperature

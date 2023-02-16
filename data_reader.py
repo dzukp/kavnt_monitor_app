@@ -47,7 +47,7 @@ class DataReader:
 
 class SimDataReader:
 
-    def __init__(self, number):
+    def __init__(self, number, *args, **kwargs):
         self.number = number
 
     def read(self):
@@ -55,5 +55,5 @@ class SimDataReader:
             'dtime': datetime.now(),
             'current': random.random() + 10.0,
             'voltage': random.random() + 12.0,
-            'temperature': random.random() * 3 + 18.0,
+            'temperature': random.random() * 10 + 18.0 if self.number == 0 else -70.0,
         }

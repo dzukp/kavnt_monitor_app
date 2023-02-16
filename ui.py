@@ -110,7 +110,7 @@ class MainWindow(QMainWindow):
         for i, df, canvas in zip(range(len(dfs)), dfs, self.plot_canvas):
             plot = canvas.get_plot()
             if df is not None and not df.empty:
-                plot.create_plot(df, f'{i}', self.plot_properties)
+                plot.create_plot(df, f'{i + 1}', self.plot_properties)
             canvas.draw()
         self.logger.info(f'end change_plots {round(time.time() - t0, 3)} sec')
 
