@@ -20,7 +20,11 @@ class DataReader:
                            socket.SOCK_STREAM,
                            socket.BTPROTO_RFCOMM) as c:
             self.logger.debug('socket opened')
-            c.connect((self.address, 1))
+            try:
+                c.connect((self.address, 1))
+            except TimeoutError:
+                self.logger.error('socket connect TimeoutError')
+                return
             self.logger.debug('socket connected')
             c.send(b'get_data')
             self.logger.debug('data sent')

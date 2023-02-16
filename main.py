@@ -92,7 +92,10 @@ class DataManager(QObject):
     def update(self):
         dfs = []
         for i, data_reader in enumerate(self.data_readers):
-            data = data_reader.read()
+            try:
+                data = data_reader.read()
+            except Exception as ex:
+                data = None
             if data:
                 self.data_processor.add_data(i, data)
             df = self.data_processor.get_data(i)
