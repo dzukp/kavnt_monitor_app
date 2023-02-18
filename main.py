@@ -27,12 +27,16 @@ class DataManager(QObject):
         self.data_readers = [DataReader(i, address=addr) for i, addr in zip(range(9), addresses)]
         self.data_processor = DataProcessor(9)
         self.period = float(config.get('DataReader', f'period'))
+        self.__run = True
 
     def start(self):
         threading.Thread(target=self.loop).start()
 
+    def stop(self):
+        self.__run = False
+
     def loop(self):
-        while True:
+        while self.__run:
             t0 = time.time()
             self.update()
             sleep_timeout = self.period - (time.time() - t0)
@@ -68,7 +72,9 @@ def main():
     data_manager.data_changed.connect(main_win.change_plots)
     main_win.show()
     try:
-        sys.exit(app.exec_())
+        res = app.exec_()
+        data_manager.stop()
+        sys.exit(res)
     except Exception:
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Critical)
