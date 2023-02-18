@@ -13,6 +13,7 @@ from data_processor import DataProcessor
 from data_reader import DataReader
 # from data_reader import SimDataReader as DataReader
 from ui import MainWindow
+from plot import BigPlot
 
 
 class DataManager(QObject):

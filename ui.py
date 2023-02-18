@@ -9,10 +9,10 @@ import matplotlib
 
 matplotlib.use('Qt5Agg')
 
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
-from plot import Plot, PlotProperties
+from plot import Plot, PlotProperties, BigPlot
 
 
 class MainWindow(QMainWindow):
@@ -24,8 +24,7 @@ class MainWindow(QMainWindow):
         self.chk_show_legend = None
         self.chk_show_corrected = None
         self.table_win = None
-        self.df1 = None
-        self.df2 = None
+        self.dfs = None
         self.date = ''
         self.em2_shift = 0
         self.object_data = None
@@ -55,7 +54,9 @@ class MainWindow(QMainWindow):
         # txt1 = QTextEdit()
 
         self.plot_canvas = [MplCanvas(i, self, width=5, height=4, dpi=100) for i in range(9)]
-        [canvas.mpl_connect("button_press_event", self.on_cinvas_click) for canvas in self.plot_canvas]
+        for canvas in self.plot_canvas:
+            canvas.set_plot(Plot())
+            canvas.mpl_connect("button_press_event", self.on_canvas_click)
 
         # self.addToolBar(Qt.BottomToolBarArea, NavigationToolbar(self.plot_canvas, self))
 
@@ -105,6 +106,7 @@ class MainWindow(QMainWindow):
         self.showMaximized()
 
     def change_plots(self, dfs):
+        self.dfs = dfs
         t0 = time.time()
         self.logger.info('change_plots')
         for i, df, canvas in zip(range(len(dfs)), dfs, self.plot_canvas):
@@ -113,6 +115,23 @@ class MainWindow(QMainWindow):
                 plot.create_plot(df, f'{i + 1}', self.plot_properties)
             canvas.draw()
         self.logger.info(f'end change_plots {round(time.time() - t0, 3)} sec')
+        if self.big_plot.isVisible():
+            self.big_plot.plot.create_plot(
+                dfs[self.big_plot.number], str(self.big_plot.number + 1), self.plot_properties)
+            self.big_plot.canvas.draw()
+
+    def on_canvas_click(self, evt):
+        self.big_plot.number = evt.canvas.number
+        if self.dfs and self.dfs[self.big_plot.number] is not None:
+            self.logger.info(f'show big plot #{evt.canvas.number}')
+            self.big_plot.plot.create_plot(
+                self.dfs[self.big_plot.number], str(self.big_plot.number + 1), self.plot_properties)
+            self.big_plot.canvas.draw()
+            if self.big_plot.isVisible():
+                self.big_plot.setFocus()
+                self.big_plot.activateWindow()
+            else:
+                self.big_plot.showMaximized()
 
     def prepare_dataframes(self):
         pass
@@ -156,10 +175,6 @@ class MainWindow(QMainWindow):
     def update_plot(self):
         self.build_plot_data(self.plot_canvas)
 
-    def on_cinvas_click(self, evt):
-        number = evt.canvas.number
-        self.big_plot.show()
-
 
 class MplCanvas(FigureCanvasQTAgg):
 
@@ -172,23 +187,34 @@ class MplCanvas(FigureCanvasQTAgg):
         self.__ax4 = self.__ax1.twinx()
         fig.subplots_adjust(right=0.9)
         super(MplCanvas, self).__init__(fig)
-        self.__plot = Plot(self.__ax1, self.__ax2, self.__ax3, self.__ax4, self.figure)
+        self.__plot = None
 
     def get_plot(self):
         return self.__plot
 
+    def set_plot(self, plot):
+        self.__plot = plot
+        self.__plot.attach(self.__ax1, self.__ax2, self.__ax3, self.__ax4, self.figure)
+
 
 class BigPlotWindow(QMainWindow):
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, parent=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setWindowTitle("Monitor")
         layout = QVBoxLayout()
-        canvas = MplCanvas(-1, self)
-        layout.addWidget(canvas)
-
-    def set_number(self, number):
-        self.number = number
-
+        self.canvas = MplCanvas(-1, self)
+        self.canvas.set_plot(BigPlot())
+        nav_bar = NavigationToolbar(self.canvas, self)
+        nav_bar.setMovable(False)
+        self.addToolBar(Qt.BottomToolBarArea, nav_bar)
+        layout.addWidget(self.canvas)
+        # self.setLayout(layout)
+        central_widget = QWidget()
+        central_widget.setLayout(layout)
+        self.setCentralWidget(central_widget)
+        self.plot = self.canvas.get_plot()
+        self.number = 0
 
 
 class TableWin(QWidget):
