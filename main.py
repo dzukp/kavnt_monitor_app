@@ -10,8 +10,8 @@ from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
 from data_processor import DataProcessor
-from data_reader import DataReader
-# from data_reader import SimDataReader as DataReader
+# from data_reader import DataReader
+from data_reader import SimDataReader as DataReader
 from ui import MainWindow
 from plot import Plot, BigPlot, PlotProperties
 

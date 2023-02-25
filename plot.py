@@ -2,7 +2,11 @@ import pandas as pd
 import numpy as np
 import matplotlib.dates as mdates
 from matplotlib.ticker import AutoMinorLocator, MaxNLocator, NullLocator, FixedLocator,  EngFormatter, LinearLocator
+from matplotlib import rcParams
 from datetime import datetime
+
+
+rcParams['lines.linewidth'] = 1.0
 
 
 class PlotProperties:
@@ -85,23 +89,27 @@ class Plot:
         self.ax3.xaxis.set_major_formatter(time_formatter)
         self.ax3.xaxis.set_minor_formatter(time_formatter_minor)
 
-    def create_plot(self, df, title, plot_properties):
-        df = self.prepare(df)
+    def set_data(self, df, plot_properties):
         voltage_field = 'voltage'  # if plot_properties.show_corrected else 'input_voltage'
         temp_field = 'temperature'  # if plot_properties.show_corrected else 'input_temperature'
         current_field = 'current'  # if plot_properties.show_corrected else 'input_current'
         # p11 = self.ax1.step(df['dtime'], df['max_charging_voltage'], '--', color='red', label='Max charging volt.')
-        # p13 = self.ax2.step(df['dtime'], df['ideal_temp'], '--', color='green', label='25C')
-        # p14 = self.ax3.step(df['dtime'], df['capacity'], color='blue', label='Capacity')
-        p16 = self.ax4.step(df['dtime'], df[current_field], color='magenta', label='Current')
-        p12 = self.ax2.step(df['dtime'], df[temp_field], color='green', label='Temperature')
+        # p14 = self.ax3.step(df['dtime'], df['capacity'], color='magenta', label='Capacity')
+        p16 = self.ax4.step(df['dtime'], df[current_field], color='blue', label='Current')
+        p12 = self.ax2.step(df['dtime'], df[temp_field], color='green', label='Temperature',  linestyle='dashed')
         p15 = self.ax1.step(df['dtime'], df[voltage_field], color='red', label='Voltage')
+        return p12, p15, p16
+
+    def create_plot(self, df, title, plot_properties):
+        df = self.prepare(df)
+
+        p12, p15, p16 = self.set_data(df, plot_properties)
 
         self.ax1.set_ylim(*self.voltage_limits)
         self.ax2.set_ylim(*self.temperature_limits)
         self.ax4.set_ylim(*self.current_limits)
-        if plot_properties.show_extra_pen:
-            self.ax3.set_xlim(0, 100)
+        # if plot_properties.show_extra_pen:
+        #     self.ax3.set_xlim(0, 100)
 
         x_min, x_max = df['dtime'].iloc[[0, -1]].values
         for ax in (self.ax1, self.ax2, self.ax3, self.ax4):
@@ -109,11 +117,11 @@ class Plot:
 
         self.set_ticks()
 
-        if plot_properties.show_extra_pen:
-            # legend_list = (p11 + p12 + p13 + p14 + p15 + p16)
-            legend_list = (p12 + p15 + p16)
-        else:
-            legend_list = (p12 + p15 + p16)
+        # if plot_properties.show_extra_pen:
+        #     # legend_list = (p11 + p12 + p13 + p14 + p15 + p16)
+        #     legend_list = (p12 + p15 + p16)
+        # else:
+        #     legend_list = (p12 + p15 + p16)
 
         self.ax2.get_yaxis().set_visible(True)
         self.ax3.get_yaxis().set_visible(False)
@@ -132,13 +140,19 @@ class Plot:
 
 class BigPlot(Plot):
 
+    def set_data(self, df, plot_properties):
+        p12, p15, p16 = super(BigPlot, self).set_data(df, plot_properties)
+        p11, p14 = None, None
+        if plot_properties.show_extra_pen:
+            p11 = self.ax1.step(df['dtime'], df['max_charging_voltage'], '--', color='red', label='Max charging volt.')
+            p14 = self.ax3.step(df['dtime'], df['capacity'], color='blue', label='Capacity')
+        return p12, p15, p16, p11, p14
+
     def create_plot(self, df, title, plot_properties):
         if df is None:
             return
 
         df = df.copy()
-
-        time_shift = plot_properties.em2_shift
 
         for i in range(len(self.ax1.lines)):
             del self.ax1.lines[0]
@@ -149,30 +163,10 @@ class BigPlot(Plot):
         for i in range(len(self.ax4.lines)):
             del self.ax4.lines[0]
 
-        voltage_field = 'voltage' if plot_properties.show_corrected else 'input_voltage'
-        temp_field = 'temperature' if plot_properties.show_corrected else 'input_temperature'
-        current_field = 'current' if plot_properties.show_corrected else 'input_current'
+        p12, p15, p16, p11, p14 = self.set_data(df, plot_properties)
 
-        self.ax3.axis('on' if plot_properties.show_extra_pen else 'off')
-        # self.ax4.axis('on' if plot_properties.show_extra_pen else 'off')
-
-        if plot_properties.show_extra_pen:
-            p11 = self.ax1.step(df['dtime'], df['max_charging_voltage'], '--', color='red',
-                                label='Max charging volt. 1')
-            p13 = self.ax2.step(df['dtime'], df['ideal_temp'], '--', color='green', label='25C')
-            p14 = self.ax3.step(df['dtime'], df['capacity'], color='blue', label='Capacity')
-        p16 = self.ax4.step(df['dtime'], df[current_field], color='magenta', label='Current')
-        p12 = self.ax2.step(df['dtime'], df[temp_field], color='green', label='Temperature')
-        p15 = self.ax1.step(df['dtime'], df[voltage_field], color='red', label='Voltage')
-
-        # if plot_properties.show_extra_pen:
-        #     p21 = self.ax1.step(df2['dtime'], df2['max_charging_voltage'], '--', color='orange',
-        #                        label='Max charging volt. 2')
-        #     # self.ax2.step(df2['dtime'], df2['ideal_temp'], '.', color='lime', label='25C')
-        #     p23 = self.ax3.step(df2['dtime'], df2['capacity'], color='cyan', label='Capacity 2')
-        # p25 = self.ax4.step(df2['dtime'], df2[current_field], color='violet', label='Current')
-        # # p22 = self.ax2.step(df2['dtime'], df2[temp_field], color='lime', label='Temperature 2')
-        # p24 = self.ax1.step(df2['dtime'], df2[voltage_field], color='orange', label='Voltage 2')
+        self.ax2.get_yaxis().set_visible(True)
+        self.ax3.get_yaxis().set_visible(False)
 
         self.ax2.spines["right"].set_position(("outward", 40))
 
@@ -181,12 +175,7 @@ class BigPlot(Plot):
         self.ax4.set_ylim(*self.current_limits)
         self.ax3.set_xlim(0, 100)
 
-        if plot_properties.x_min is None:
-            x_min = np.concatenate([df['dtime'].values]).min()
-            x_max = np.concatenate([df['dtime'].values]).max()
-        else:
-            x_min = plot_properties.x_min
-            x_max = plot_properties.x_max
+        x_min, x_max = df['dtime'].iloc[[0, -1]].values
         self.ax1.set_xlim(x_min, x_max)
         self.ax2.set_xlim(x_min, x_max)
         self.ax4.set_xlim(x_min, x_max)
@@ -197,7 +186,7 @@ class BigPlot(Plot):
 
         if plot_properties.show_extra_pen:
             # self.ax3.set_ylabel('%', loc='top')
-            legend_list = (p11 + p12 + p13 + p14 + p15 + p16)
+            legend_list = (p11 + p12 + p14 + p15 + p16)
         else:
             legend_list = (p12 + p15 + p16)
         self.ax3.legend(loc='best', bbox_to_anchor=(0., 0., 1., 1.), handles=legend_list).set_visible(True)
