@@ -17,6 +17,8 @@ from plot import Plot, PlotProperties, BigPlot
 
 class MainWindow(QMainWindow):
 
+    create_big_plot = pyqtSignal(int)
+
     def __init__(self, data_manager, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.spin_em2_shift = None
@@ -24,18 +26,24 @@ class MainWindow(QMainWindow):
         self.chk_show_legend = None
         self.chk_show_corrected = None
         self.table_win = None
-        self.dfs = None
         self.date = ''
         self.em2_shift = 0
         self.object_data = None
         self.kit_win = None
         self.plot_params = {}
-        self.plot_canvas = None
-        self.plot_properties = PlotProperties()
+        self.plot_canvas = []
+        self.plot_properties = None
         self.big_plot = BigPlotWindow()
         self.logger = logging.getLogger('main_win')
 
-    def init(self):
+    def init(self, plots, big_plot, plot_properties):
+        for i, plot in enumerate(plots):
+            canvas = MplCanvas(i, self, width=5, height=4, dpi=100)
+            canvas.set_plot(plot)
+            canvas.mpl_connect("button_press_event", self.on_canvas_click)
+            self.plot_canvas.append(canvas)
+        self.big_plot.set_plot(big_plot)
+        self.plot_properties = plot_properties
         self.init_ui()
         self.build_plot_data(self.plot_canvas)
 
@@ -50,15 +58,6 @@ class MainWindow(QMainWindow):
         button_action.setStatusTip("Table")
         button_action.triggered.connect(self.open_table)
         toolbar.addAction(button_action)
-
-        # txt1 = QTextEdit()
-
-        self.plot_canvas = [MplCanvas(i, self, width=5, height=4, dpi=100) for i in range(9)]
-        for canvas in self.plot_canvas:
-            canvas.set_plot(Plot())
-            canvas.mpl_connect("button_press_event", self.on_canvas_click)
-
-        # self.addToolBar(Qt.BottomToolBarArea, NavigationToolbar(self.plot_canvas, self))
 
         box = QVBoxLayout()
         grid_layout = QGridLayout()
@@ -99,39 +98,32 @@ class MainWindow(QMainWindow):
         control_layout.addWidget(self.chk_show_legend)
         control_layout.addWidget(self.chk_show_corrected)
 
-        box.addLayout(control_layout)
+        # box.addLayout(control_layout)
         central_widget.setLayout(box)
         self.setCentralWidget(central_widget)
         # self.resize(800, 600)
         self.showMaximized()
 
-    def change_plots(self, dfs):
-        self.dfs = dfs
+    def change_plots(self):
         t0 = time.time()
-        self.logger.info('change_plots')
-        for i, df, canvas in zip(range(len(dfs)), dfs, self.plot_canvas):
-            plot = canvas.get_plot()
-            if df is not None and not df.empty:
-                plot.create_plot(df, f'{i + 1}', self.plot_properties)
+        self.logger.debug('change_plots')
+        for canvas in self.plot_canvas:
             canvas.draw()
-        self.logger.info(f'end change_plots {round(time.time() - t0, 3)} sec')
+        self.logger.debug(f'end change_plots {round(time.time() - t0, 3)} sec')
+
+    def draw_big_plot(self):
         if self.big_plot.isVisible():
-            self.big_plot.plot.create_plot(
-                dfs[self.big_plot.number], str(self.big_plot.number + 1), self.plot_properties)
             self.big_plot.canvas.draw()
 
     def on_canvas_click(self, evt):
+        self.logger.info(f'on_canvas_click #{evt.canvas.number}')
         self.big_plot.number = evt.canvas.number
-        if self.dfs and self.dfs[self.big_plot.number] is not None:
-            self.logger.info(f'show big plot #{evt.canvas.number}')
-            self.big_plot.plot.create_plot(
-                self.dfs[self.big_plot.number], str(self.big_plot.number + 1), self.plot_properties)
-            self.big_plot.canvas.draw()
-            if self.big_plot.isVisible():
-                self.big_plot.setFocus()
-                self.big_plot.activateWindow()
-            else:
-                self.big_plot.showMaximized()
+        self.create_big_plot.emit(evt.canvas.number)
+        if self.big_plot.isVisible():
+            self.big_plot.setFocus()
+            self.big_plot.activateWindow()
+        else:
+            self.big_plot.showMaximized()
 
     def prepare_dataframes(self):
         pass
@@ -143,7 +135,7 @@ class MainWindow(QMainWindow):
         # self.plot_properties.x_min = self.plot_params.get('x_min')
         # self.plot_properties.x_max = self.plot_params.get('x_max')
         # self.plot_properties.em2_shift = self.spin_em2_shift.value() * 1000
-        self.change_plots([None] * len(self.plot_canvas))
+        # self.change_plots([None] * len(self.plot_canvas))
 
     def open_table(self):
         pass
@@ -204,7 +196,6 @@ class BigPlotWindow(QMainWindow):
         self.setWindowTitle("Monitor")
         layout = QVBoxLayout()
         self.canvas = MplCanvas(-1, self)
-        self.canvas.set_plot(BigPlot())
         nav_bar = NavigationToolbar(self.canvas, self)
         nav_bar.setMovable(False)
         self.addToolBar(Qt.BottomToolBarArea, nav_bar)
@@ -213,8 +204,13 @@ class BigPlotWindow(QMainWindow):
         central_widget = QWidget()
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
-        self.plot = self.canvas.get_plot()
+        self.plot = None
         self.number = 0
+
+    def set_plot(self, plot):
+        self.canvas.set_plot(plot)
+        self.plot = plot
+
 
 
 class TableWin(QWidget):
