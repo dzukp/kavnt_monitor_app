@@ -1,3 +1,5 @@
+import os
+import pickle
 from datetime import datetime, timedelta
 
 import pandas as pd
@@ -9,6 +11,7 @@ class DataProcessor:
         self.columns = ['dtime', 'temperature', 'voltage', 'current']
         self.dfs = [pd.DataFrame(data=[], columns=self.columns) for i in range(count)]
         self.temperature = None
+        self.load()
 
     def add_data(self, idx, data):
         df = self.dfs[idx]
@@ -49,3 +52,19 @@ class DataProcessor:
             for df in self.dfs:
                 if df.loc[df.index[-1], 'temperature'] is None:
                     df.loc[df.index[-1], 'temperature'] = self.temperature
+        self.save()
+
+    def save(self):
+        if not os.path.exists('data'):
+            os.mkdir('data')
+        for i, df in enumerate(self.dfs):
+            df.to_pickle(f'data/{i + 1}.pickle')
+
+    def load(self):
+        if os.path.exists('data'):
+            for i, df in enumerate(self.dfs):
+                try:
+                    df = pd.read_pickle(f'data/{i + 1}.pickle')
+                    self.dfs[i] = df
+                except (FileNotFoundError, pickle.UnpicklingError):
+                    continue

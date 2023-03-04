@@ -16,6 +16,7 @@ from matplotlib.figure import Figure
 class MainWindow(QMainWindow):
 
     create_big_plot = pyqtSignal(int)
+    reset_plot = pyqtSignal(int)
 
     def __init__(self, data_manager, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
@@ -47,15 +48,9 @@ class MainWindow(QMainWindow):
 
     def init_ui(self):
         self.setWindowTitle("Monitor")
-        toolbar = QToolBar("My main toolbar", parent=self)
-        self.addToolBar(toolbar)
+        self.init_menu_bar()
 
         central_widget = QWidget()
-
-        button_action = QAction("Table", self)
-        button_action.setStatusTip("Table")
-        button_action.triggered.connect(self.open_table)
-        toolbar.addAction(button_action)
 
         box = QVBoxLayout()
         grid_layout = QGridLayout()
@@ -101,6 +96,16 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         # self.resize(800, 600)
         self.showMaximized()
+
+    def init_menu_bar(self):
+        menu_bar = self.menuBar()
+        reset = QMenu("&Reset", self)
+        menu_bar.addMenu(reset)
+        for i, canvas in enumerate(self.plot_canvas):
+            act = QAction(self)
+            act.setText(f'Reset {i + 1}')
+            reset.addAction(act)
+            # act.triggered.connect
 
     def change_plots(self):
         t0 = time.time()

@@ -35,10 +35,10 @@ class Plot:
         self.temperature_limits = (0, 60)
 
     def attach(self, ax1, ax2, ax3, ax4, figure):
-        self.ax1 = ax1
+        self.ax1 = ax4
         self.ax2 = ax2
         self.ax3 = ax3
-        self.ax4 = ax4
+        self.ax4 = ax1
         self.figure = figure
 
     def configure(self, config):
@@ -64,7 +64,7 @@ class Plot:
     def set_ticks(self):
         self.ax1.xaxis.set_major_locator(LinearLocator(2))
         self.ax1.xaxis.set_minor_locator(AutoMinorLocator())
-        self.ax2.yaxis.set_major_locator(LinearLocator(2))
+        self.ax2.yaxis.set_major_locator(LinearLocator(11))
         self.ax1.yaxis.set_major_locator(LinearLocator(11))
         self.ax4.yaxis.set_major_locator(LinearLocator(11))
 
@@ -82,8 +82,8 @@ class Plot:
         self.ax2.yaxis.set_major_formatter(t_formmatter)
         self.ax4.yaxis.set_major_formatter(amp_formmatter)
 
-        self.ax1.xaxis.set_major_formatter(time_formatter)
-        self.ax1.xaxis.set_minor_formatter(time_formatter_minor)
+        self.ax4.xaxis.set_major_formatter(time_formatter)
+        self.ax4.xaxis.set_minor_formatter(time_formatter_minor)
 
         self.ax3.yaxis.set_major_formatter(perc_formmatter)
         self.ax3.xaxis.set_major_formatter(time_formatter)
@@ -128,13 +128,14 @@ class Plot:
 
         self.ax2.spines["right"].set_position(("outward", 30))
 
-        self.ax1.grid(True, which='both')
+        self.ax4.grid(True, which='both')
         # self.ax4.grid(True, which='major')
         for ax in (self.ax1, self.ax2, self.ax3, self.ax4):
             ax.tick_params(axis='both', which='both', labelsize=6)
         # self.ax3.legend(loc='best', bbox_to_anchor=(0., 0., 1., 1.), handles=legend_list).set_visible(
         #     plot_properties.show_legend)
-        self.figure.suptitle(title)
+        # self.figure.suptitle(title, ha='left', y=0.95)
+        self.ax4.set_title(title, x=0.05, y=0.05)
         self.figure.tight_layout()
 
 
@@ -149,19 +150,7 @@ class BigPlot(Plot):
         return p12, p15, p16, p11, p14
 
     def create_plot(self, df, title, plot_properties):
-        if df is None:
-            return
-
-        df = df.copy()
-
-        for i in range(len(self.ax1.lines)):
-            del self.ax1.lines[0]
-        for i in range(len(self.ax2.lines)):
-            del self.ax2.lines[0]
-        for i in range(len(self.ax3.lines)):
-            del self.ax3.lines[0]
-        for i in range(len(self.ax4.lines)):
-            del self.ax4.lines[0]
+        df = self.prepare(df)
 
         p12, p15, p16, p11, p14 = self.set_data(df, plot_properties)
 
@@ -191,5 +180,5 @@ class BigPlot(Plot):
             legend_list = (p12 + p15 + p16)
         self.ax3.legend(loc='best', bbox_to_anchor=(0., 0., 1., 1.), handles=legend_list).set_visible(True)
         self.ax1.grid(True, which='both')
-        self.figure.suptitle(title)
+        self.figure.suptitle(title, ha='left')
         self.figure.tight_layout()

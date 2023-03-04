@@ -19,7 +19,7 @@ from plot import Plot, BigPlot, PlotProperties
 class DataManager(QObject):
     data_changed = pyqtSignal(list)
 
-    def __init__(self, number=9, *args, **kwargs):
+    def __init__(self, number=8, *args, **kwargs):
         self.logger = logging.getLogger(f'manager')
         super().__init__(*args, **kwargs)
         config = configparser.ConfigParser()
@@ -75,9 +75,9 @@ class DataManager(QObject):
 
     def update_big_plot(self, number):
         self.big_plot_number = number
-        if self.big_plot_number is not None:
-            self.big_plot.create_plot(
-                self.data_processor.dfs[self.big_plot_number], str(self.big_plot_number + 1), self.plot_properties)
+        df = self.data_processor.dfs[self.big_plot_number]
+        if self.big_plot_number is not None and not df.empty:
+            self.big_plot.create_plot(df, str(self.big_plot_number + 1), self.plot_properties)
 
 
 def main():
