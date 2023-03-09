@@ -17,18 +17,13 @@ class MainWindow(QMainWindow):
 
     create_big_plot = pyqtSignal(int)
     reset_plot = pyqtSignal(int)
+    change_data_address = pyqtSignal(int, str)
 
-    def __init__(self, data_manager, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
-        self.spin_em2_shift = None
-        self.chk_show_extra_pen = None
-        self.chk_show_legend = None
-        self.chk_show_corrected = None
-        self.table_win = None
-        self.date = ''
-        self.em2_shift = 0
-        self.object_data = None
-        self.kit_win = None
+        self.cbox_plot_num = None
+        self.edit_address = None
+        self.addresses = {}
         self.plot_params = {}
         self.plot_canvas = []
         self.plot_properties = None
@@ -44,11 +39,11 @@ class MainWindow(QMainWindow):
         self.big_plot.set_plot(big_plot)
         self.plot_properties = plot_properties
         self.init_ui()
-        self.build_plot_data(self.plot_canvas)
+        # self.build_plot_data(self.plot_canvas)
 
     def init_ui(self):
         self.setWindowTitle("Monitor")
-        self.init_menu_bar()
+        # self.init_menu_bar()
 
         central_widget = QWidget()
 
@@ -56,40 +51,40 @@ class MainWindow(QMainWindow):
         grid_layout = QGridLayout()
         for i, plot in enumerate(self.plot_canvas):
             grid_layout.addWidget(plot, i // 3, i % 3)
+        grid_layout.setColumnStretch(0, 1)
+        grid_layout.setColumnStretch(1, 1)
+        grid_layout.setColumnStretch(2, 1)
         box.addLayout(grid_layout)
-        control_layout = QHBoxLayout()
+        control_layout = QVBoxLayout()
+        grid_layout.addLayout(control_layout, 2, 2, alignment=Qt.AlignLeft)
+        number_layout = QHBoxLayout()
+        address_layout = QHBoxLayout()
+        reset_layout = QHBoxLayout()
 
-        btn_plot_time_left = QPushButton('<')
-        btn_plot_time_left.clicked.connect(self.plot_time_left)
-        btn_plot_time_right = QPushButton('>')
-        btn_plot_time_right.clicked.connect(self.plot_time_right)
-        btn_plot_time_plus = QPushButton('+')
-        btn_plot_time_plus.clicked.connect(self.plot_time_plus)
-        btn_plot_time_minus = QPushButton('-')
-        btn_plot_time_minus.clicked.connect(self.plot_time_minus)
-        lbl_em2_shift = QLabel(text='ЭМ2 shift:')
-        self.spin_em2_shift = QSpinBox()
-        self.spin_em2_shift.setMinimum(-3600 * 24)
-        self.spin_em2_shift.setMaximum(3600 * 24)
-        # self.spin_em2_shift.setSingleStep(10)
-        # self.spin_em2_shift.editingFinished.connect(self.update_plot)
-        self.spin_em2_shift.textChanged.connect(self.update_plot)
-        self.chk_show_extra_pen = QCheckBox('Extra pens')
-        self.chk_show_extra_pen.stateChanged.connect(self.update_plot)
-        self.chk_show_legend = QCheckBox('Legend')
-        self.chk_show_legend.stateChanged.connect(self.update_plot)
-        self.chk_show_corrected = QCheckBox('Corrected')
-        self.chk_show_corrected.setChecked(True)
-        self.chk_show_corrected.stateChanged.connect(self.update_plot)
-        control_layout.addWidget(btn_plot_time_left)
-        control_layout.addWidget(btn_plot_time_plus)
-        control_layout.addWidget(btn_plot_time_minus)
-        control_layout.addWidget(btn_plot_time_right)
-        control_layout.addWidget(lbl_em2_shift)
-        control_layout.addWidget(self.spin_em2_shift)
-        control_layout.addWidget(self.chk_show_extra_pen)
-        control_layout.addWidget(self.chk_show_legend)
-        control_layout.addWidget(self.chk_show_corrected)
+        self.cbox_plot_num = QComboBox()
+        self.cbox_plot_num.addItems([str(i) for i in range(1, len(self.plot_canvas) + 1)])
+        self.cbox_plot_num.currentTextChanged.connect(self.on_plot_number_changed)
+
+        btn_reset = QPushButton('Reset')
+        btn_reset.clicked.connect(self.on_reset_click)
+
+        self.edit_address = QLineEdit()
+        self.edit_address.setInputMask('HH:HH:HH:HH:HH:HH')
+        self.edit_address.textEdited.connect(self.on_address_edited)
+
+        control_layout.addLayout(number_layout)
+        control_layout.addLayout(address_layout)
+        control_layout.addLayout(reset_layout)
+
+        number_layout.addWidget(QLabel('Plot number'))
+        number_layout.addWidget(self.cbox_plot_num)
+        number_layout.addStretch()
+        address_layout.addWidget(QLabel('Address'))
+        address_layout.addWidget(self.edit_address)
+        address_layout.addStretch()
+        reset_layout.addWidget(btn_reset)
+        reset_layout.addStretch()
+        control_layout.addStretch()
 
         # box.addLayout(control_layout)
         central_widget.setLayout(box)
@@ -128,48 +123,26 @@ class MainWindow(QMainWindow):
         else:
             self.big_plot.showMaximized()
 
-    def prepare_dataframes(self):
-        pass
+    def on_reset_click(self, evt):
+        index = int(self.cbox_plot_num.currentText()) - 1
+        self.reset_plot.emit(index)
 
-    def build_plot_data(self, canvas):
-        self.plot_properties.show_extra_pen = self.chk_show_extra_pen.isChecked()
-        self.plot_properties.show_corrected = self.chk_show_corrected.isChecked()
-        self.plot_properties.show_legend = self.chk_show_legend.isChecked()
-        # self.plot_properties.x_min = self.plot_params.get('x_min')
-        # self.plot_properties.x_max = self.plot_params.get('x_max')
-        # self.plot_properties.em2_shift = self.spin_em2_shift.value() * 1000
-        # self.change_plots([None] * len(self.plot_canvas))
+    def on_data_address_changed(self, index, address):
+        number = index + 1
+        self.addresses[number] = address
+        if self.cbox_plot_num.currentText() == str(number):
+            self.edit_address.setText(address)
 
-    def open_table(self):
-        pass
+    def on_address_edited(self, text):
+        number = int(self.cbox_plot_num.currentText())
+        index = number - 1
+        text = text.strip()
+        if len(text) == 17 and self.addresses.get(number, '') != text:
+            self.change_data_address.emit(index, text)
 
-    def plot_time_left(self):
-        d = self.plot_params['x_max'] - self.plot_params['x_min']
-        # self.plot_params['x_min'] = max(0, self.plot_params['x_min'] - d / 2)
-        # self.plot_params['x_max'] = max(d, self.plot_params['x_max'] - d / 2)
-        self.plot_params['x_min'] = self.plot_params['x_min'] - d / 2
-        self.plot_params['x_max'] = self.plot_params['x_max'] - d / 2
-        self.build_plot_data(self.plot_canvas)
-
-    def plot_time_right(self):
-        d = self.plot_params['x_max'] - self.plot_params['x_min']
-        self.plot_params['x_min'] += d / 2
-        self.plot_params['x_max'] += d / 2
-        self.build_plot_data(self.plot_canvas)
-
-    def plot_time_plus(self):
-        d = self.plot_params['x_max'] - self.plot_params['x_min']
-        self.plot_params['x_max'] -= d / 2
-        self.build_plot_data(self.plot_canvas)
-
-    def plot_time_minus(self):
-        d = self.plot_params['x_max'] - self.plot_params['x_min']
-        self.plot_params['x_max'] += d
-        self.build_plot_data(self.plot_canvas)
-
-    def update_plot(self):
-        self.build_plot_data(self.plot_canvas)
-
+    def on_plot_number_changed(self, evt):
+        number = int(self.cbox_plot_num.currentText())
+        self.edit_address.setText(self.addresses.get(number, ''))
 
 class MplCanvas(FigureCanvasQTAgg):
 

@@ -22,6 +22,8 @@ class DataProcessor:
         if self.temperature is None and not df_data.empty and df_data['temperature'].values[0] is not None:
             self.temperature = df_data['temperature'].values[0]
         df = pd.concat([df, df_data], ignore_index=True)
+        start_time = datetime.now() - timedelta(hours=12)
+        df = df[df['dtime'] > start_time]
         self.dfs[idx] = df
 
     def calc_extra_data(self, df):
@@ -39,20 +41,18 @@ class DataProcessor:
         df['capacity'] = df['voltage'].apply(capacity)
         return df
 
-    def get_data(self, idx):
-        start_time = datetime.now() - timedelta(hours=12)
-        df = self.dfs[idx]
-        return df[df['dtime'] > start_time]
-
     def begin_circle(self):
         self.temperature = None
 
     def end_circle(self):
         if self.temperature is not None:
             for df in self.dfs:
-                if df.loc[df.index[-1], 'temperature'] is None:
+                if not df.empty and df.loc[df.index[-1], 'temperature'] is None:
                     df.loc[df.index[-1], 'temperature'] = self.temperature
         self.save()
+
+    def reset(self, number):
+        self.dfs[number] = self.dfs[number][0:0]
 
     def save(self):
         if not os.path.exists('data'):

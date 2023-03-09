@@ -18,6 +18,7 @@ from plot import Plot, BigPlot, PlotProperties
 
 class DataManager(QObject):
     data_changed = pyqtSignal(list)
+    data_address_changed = pyqtSignal(int, str)
 
     def __init__(self, number=8, *args, **kwargs):
         self.logger = logging.getLogger(f'manager')
@@ -35,6 +36,8 @@ class DataManager(QObject):
         self.__run = True
 
     def start(self):
+        for r in self.data_readers:
+            self.data_address_changed.emit(r.number, r.address)
         threading.Thread(target=self.loop).start()
 
     def stop(self):
@@ -73,11 +76,30 @@ class DataManager(QObject):
 
         self.data_changed.emit(self.data_processor.dfs)
 
+    def change_address(self, index, address):
+        self.data_readers[index].set_address(address)
+        self.data_address_changed.emit(index, address)
+        self.save_address()
+
     def update_big_plot(self, number):
         self.big_plot_number = number
         df = self.data_processor.dfs[self.big_plot_number]
         if self.big_plot_number is not None and not df.empty:
             self.big_plot.create_plot(df, str(self.big_plot_number + 1), self.plot_properties)
+
+    def reset_plot(self, index):
+        self.data_processor.reset(index)
+        self.data_changed.emit(self.data_processor.dfs)
+
+    def save_address(self):
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+        config['DataReader'] = {
+            **config['DataReader'],
+            **{f'bt_{dr.number + 1}': dr.address or '' for dr in self.data_readers}
+            }
+        with open('config.ini', 'w') as f:
+            config.write(f)
 
 
 def main():
@@ -85,15 +107,19 @@ def main():
     check_config()
     app = QApplication([])
     data_manager = DataManager()
-    data_manager.start()
 
-    main_win = MainWindow(data_manager)
+    main_win = MainWindow()
     main_win.init(data_manager.plots, data_manager.big_plot, data_manager.plot_properties)
 
     data_manager.data_changed.connect(main_win.change_plots)
     data_manager.data_changed.connect(main_win.draw_big_plot)
+    data_manager.data_address_changed.connect(main_win.on_data_address_changed)
     main_win.create_big_plot.connect(data_manager.update_big_plot)
+    main_win.reset_plot.connect(data_manager.reset_plot)
+    main_win.change_data_address.connect(data_manager.change_address)
     main_win.show()
+
+    data_manager.start()
     try:
         res = app.exec_()
         data_manager.stop()

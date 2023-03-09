@@ -44,11 +44,16 @@ class DataReader:
             else:
                 self.logger.error(f'bad data: {data}')
 
+    def set_address(self, address):
+        self.logger.info(f'change address: {self.address} to {address}')
+        self.address = address
+
 
 class SimDataReader:
 
-    def __init__(self, number, *args, **kwargs):
+    def __init__(self, number, address, *args, **kwargs):
         self.number = number
+        self.address = address
 
     def read(self):
         return {
@@ -57,3 +62,6 @@ class SimDataReader:
             'voltage': random.random() + 12.0,
             'temperature': random.random() * 10 + 18.0 if self.number == 0 else -70.0,
         }
+
+    def set_address(self, address):
+        self.address = address
