@@ -19,7 +19,7 @@ class DataProcessor:
         values[0] = datetime.now()
         df_data = pd.DataFrame(data=[values], columns=self.columns)
         df_data = self.calc_extra_data(df_data)
-        if self.temperature is None and not df_data.empty and df_data['temperature'].values[0] is not None:
+        if idx == 0 and self.temperature is None and not df_data.empty and df_data['temperature'].values[0] is not None:
             self.temperature = df_data['temperature'].values[0]
         df = pd.concat([df, df_data], ignore_index=True)
         start_time = datetime.now() - timedelta(hours=12)
@@ -46,8 +46,8 @@ class DataProcessor:
 
     def end_circle(self):
         if self.temperature is not None:
-            for df in self.dfs:
-                if not df.empty and df.loc[df.index[-1], 'temperature'] is None:
+            for df in self.dfs[1:]:
+                if not df.empty:
                     df.loc[df.index[-1], 'temperature'] = self.temperature
         self.save()
 
