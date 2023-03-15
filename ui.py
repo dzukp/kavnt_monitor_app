@@ -122,6 +122,7 @@ class MainWindow(QMainWindow):
             self.big_plot.activateWindow()
         else:
             self.big_plot.showMaximized()
+        self.draw_big_plot()
 
     def on_reset_click(self, evt):
         index = int(self.cbox_plot_num.currentText()) - 1

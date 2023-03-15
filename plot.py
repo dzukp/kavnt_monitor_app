@@ -149,6 +149,19 @@ class BigPlot(Plot):
             p14 = self.ax3.step(df['dtime'], df['capacity'], color='blue', label='Capacity')
         return p12, p15, p16, p11, p14
 
+    def set_ticks(self):
+        super(BigPlot, self).set_ticks()
+
+        v_formmatter = EngFormatter(unit='V', places=2)
+        t_formmatter = EngFormatter(unit=u'\u00b0C', places=2)
+        perc_formmatter = EngFormatter(unit='%', places=2)
+        amp_formmatter = EngFormatter(unit='A', places=2)
+
+        self.ax1.yaxis.set_major_formatter(v_formmatter)
+        self.ax2.yaxis.set_major_formatter(t_formmatter)
+        self.ax4.yaxis.set_major_formatter(amp_formmatter)
+        self.ax3.yaxis.set_major_formatter(perc_formmatter)
+
     def create_plot(self, df, title, plot_properties):
         df = self.prepare(df)
 
@@ -157,7 +170,7 @@ class BigPlot(Plot):
         self.ax2.get_yaxis().set_visible(True)
         self.ax3.get_yaxis().set_visible(False)
 
-        self.ax2.spines["right"].set_position(("outward", 40))
+        self.ax2.spines["right"].set_position(("outward", 50))
 
         self.ax1.set_ylim(*self.voltage_limits)
         self.ax2.set_ylim(*self.temperature_limits)
