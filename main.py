@@ -82,12 +82,14 @@ class DataManager(QObject):
         self.save_address()
 
     def update_big_plot(self, number):
+        self.logger.debug(f'update_big_plot #{number}')
         self.big_plot_number = number
         df = self.data_processor.dfs[self.big_plot_number]
         if self.big_plot_number is not None and not df.empty:
             self.big_plot.create_plot(df, str(self.big_plot_number + 1), self.plot_properties)
 
     def reset_plot(self, index):
+        self.logger.debug(f'reset plot index: {index}')
         self.data_processor.reset(index)
         self.data_changed.emit(self.data_processor.dfs)
 

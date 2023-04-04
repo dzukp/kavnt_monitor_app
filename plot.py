@@ -5,6 +5,8 @@ from matplotlib.ticker import AutoMinorLocator, MaxNLocator, NullLocator, FixedL
 from matplotlib import rcParams
 from datetime import datetime
 
+from matplotlib.widgets import SpanSelector
+from pytz import timezone
 
 rcParams['lines.linewidth'] = 1.0
 
@@ -141,6 +143,10 @@ class Plot:
 
 class BigPlot(Plot):
 
+    def __init__(self):
+        super(BigPlot, self).__init__()
+        self.text_integral = None
+
     def set_data(self, df, plot_properties):
         p12, p15, p16 = super(BigPlot, self).set_data(df, plot_properties)
         p11, p14 = None, None
@@ -195,3 +201,25 @@ class BigPlot(Plot):
         self.ax1.grid(True, which='both')
         self.figure.suptitle(title, ha='left')
         self.figure.tight_layout()
+
+    def attach(self, ax1, ax2, ax3, ax4, figure):
+        super(BigPlot, self).attach(ax1, ax2, ax3, ax4, figure)
+        self.span = SpanSelector(self.ax1, self.on_select, 'horizontal', props=dict(facecolor='blue', alpha=0.5))
+
+    def on_select(self, xmin, xmax):
+        tz = timezone(zone='UTC')
+        tmin = datetime.fromtimestamp(xmin * 24 * 3600, tz=tz)
+        tmax = datetime.fromtimestamp(xmax * 24 * 3600, tz=tz)
+        df = self.df[(self.df['dtime'] > np.datetime64(tmin)) & (self.df['dtime'] < np.datetime64(tmax))]
+        integral = np.trapz(df['current'], x=df['dtime']) * (0.1 ** 9)
+        integral_a_h = float(integral) * 3600 / 1000
+        x = df['dtime'].values[0]
+        y = df['current'].values.max() + 1.0
+        text = f'{integral_a_h} А*ч'
+        if not self.text_integral:
+            self.text_integral = self.ax4.text(
+                x=x, y=y, s=text, color='darkblue', bbox=dict(boxstyle="round", facecolor='skyblue'))
+        else:
+            self.text_integral.set_x(x)
+            self.text_integral.set_y(y)
+            self.text_integral.set_text(text)
