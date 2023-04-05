@@ -211,15 +211,16 @@ class BigPlot(Plot):
         tmin = datetime.fromtimestamp(xmin * 24 * 3600, tz=tz)
         tmax = datetime.fromtimestamp(xmax * 24 * 3600, tz=tz)
         df = self.df[(self.df['dtime'] > np.datetime64(tmin)) & (self.df['dtime'] < np.datetime64(tmax))]
-        integral = np.trapz(df['current'], x=df['dtime']) * (0.1 ** 9)
-        integral_a_h = float(integral) * 3600 / 1000
-        x = df['dtime'].values[0]
-        y = df['current'].values.max() + 1.0
-        text = f'{integral_a_h} А*ч'
-        if not self.text_integral:
-            self.text_integral = self.ax4.text(
-                x=x, y=y, s=text, color='darkblue', bbox=dict(boxstyle="round", facecolor='skyblue'))
-        else:
-            self.text_integral.set_x(x)
-            self.text_integral.set_y(y)
-            self.text_integral.set_text(text)
+        if not df.empty:
+            integral = np.trapz(df['current'], x=df['dtime']) * (0.1 ** 9)
+            integral_a_h = round(float(integral) / 3600, 3)
+            x = df['dtime'].values[0]
+            y = df['current'].values.max() + 1.0
+            text = f'{integral_a_h} А∙ч'
+            if not self.text_integral:
+                self.text_integral = self.ax4.text(
+                    x=x, y=y, s=text, color='darkblue', bbox=dict(boxstyle="round", facecolor='skyblue'))
+            else:
+                self.text_integral.set_x(x)
+                self.text_integral.set_y(y)
+                self.text_integral.set_text(text)
